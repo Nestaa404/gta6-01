@@ -7,7 +7,8 @@
 // crime game: explore the city of Solmara on foot or by car, steal cars, dodge
 // traffic and pedestrians, lose the police at five wanted levels, run five story
 // missions for Lena Voss against Silas Kade, fight with fists and guns, and save
-// your progress — all with a HUD, a minimap and synthesised sound.
+// your progress — all with a HUD, a minimap and synthesised sound. Entry name:
+// Solmara.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:

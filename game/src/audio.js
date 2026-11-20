@@ -14,6 +14,7 @@ export function createAudio() {
   let musicStep = 0;
 
   // A sunny, slightly tense loop in A minor: bass walks, lead answers.
+  // 190 ms a step keeps it brisk without rushing the driving.
   const BASS = [55, 55, 65.4, 49, 55, 55, 82.4, 73.4];
   const LEAD = [440, 0, 523.25, 0, 659.25, 0, 587.33, 523.25, 440, 0, 392, 0, 329.63, 392, 440, 0];
   const STEP_MS = 190;

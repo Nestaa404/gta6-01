@@ -48,8 +48,8 @@ export const CAR = {
   stealWanted: 1,
 };
 
-export const TRAFFIC = { count: 26, speed: 150, speedJitter: 60 };
-export const PEDS = { count: 34, speed: 62, speedJitter: 26 };
+export const TRAFFIC = { count: 28, speed: 150, speedJitter: 60 };
+export const PEDS = { count: 36, speed: 62, speedJitter: 26 };
 
 export const POLICE = {
   maxCars: 6,

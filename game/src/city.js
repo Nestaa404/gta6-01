@@ -67,9 +67,10 @@ export function createCity(random) {
       if (district === 'beach') continue;
       const roll = random();
       if (roll < 0.16) {
-        // A park: grass, trees, a path.
+        // A park: grass, trees, a path. Parks also break up the downtown grid
+        // so the minimap reads as a city, not a chessboard.
         parks.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
-        const count = random.int(5, 9);
+        const count = random.int(6, 10);
         for (let i = 0; i < count; i += 1) {
           trees.push({ x: random.range(x0 + 20, x1 - 20), y: random.range(y0 + 20, y1 - 20), r: random.range(10, 16) });
         }

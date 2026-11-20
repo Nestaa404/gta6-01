@@ -24,11 +24,12 @@ function write(key, value) {
 export function loadSave() {
   const save = read(SAVE_KEY);
   if (!save || typeof save.x !== 'number' || typeof save.missionIndex !== 'number') return null;
+  if (save.version !== 1) return null; // A save from another version is not trusted.
   return save;
 }
 
 export function storeSave(save) {
-  return write(SAVE_KEY, save);
+  return write(SAVE_KEY, { ...save, version: 1, savedAt: Date.now() });
 }
 
 export function clearSave() {

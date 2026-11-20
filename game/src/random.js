@@ -1,7 +1,8 @@
 // A small seeded random number generator (mulberry32): the same seed gives the
 // same city and the same game, which is what makes the screenshot scenes
-// repeatable. It also hands out a shuffled pick and a range helper.
-
+// repeatable — and what makes a saved seed replay the same traffic pattern.
+// The helpers below keep every caller on the same stream: no Math.random()
+// anywhere in the game, so a seed fully determines a run.
 export function createRandom(seed) {
   let a = seed | 0;
   function random() {

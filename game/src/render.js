@@ -4,7 +4,7 @@
 // sun-soaked colours, soft shadows — all drawn from the world's state.
 import { CAR, DISTRICTS, FONT, PALETTE, PLAYER, ROADS, VIEW, WEAPONS, WORLD } from './config.js';
 import { PLACES } from './city.js';
-import { STORY } from './missions.js';
+import { MISSION_COUNT, STORY } from './missions.js';
 
 export const SCREEN_TITLE = 'title';
 export const SCREEN_PLAY = 'play';
@@ -620,7 +620,7 @@ export function createRenderer(canvas) {
       ctx.fillStyle = 'rgba(10,14,20,0.6)';
       ctx.fillRect(0, 0, VIEW.width, VIEW.height);
       drawPanel('Paused', [
-        `Money $${p.money.toLocaleString('en-US')}  ·  Missions done ${state.missionsDone} / 5`,
+        `Money $${p.money.toLocaleString('en-US')}  ·  Missions done ${state.missionsDone} / ${MISSION_COUNT}`,
         'F — save your progress   ·   H — how to play',
         'Your save stays in this browser.',
       ], 'P or Enter to resume');

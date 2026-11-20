@@ -13,6 +13,9 @@ export const STORY = {
   intro: 'Solmara — sun, sea, and Silas Kade owning every street. Lena Voss needs a wheelman. That is you.',
 };
 
+/** How many missions the story holds; the HUD and the end screen read this. */
+export const MISSION_COUNT = 5;
+
 function stepGoto(place, label, hint) {
   return { type: 'goto', x: place.x, y: place.y, label, hint: hint ?? `Head to ${place.name}.` };
 }

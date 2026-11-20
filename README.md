@@ -16,7 +16,13 @@ vendored make.fun library.
 **Solmara** is an original open-world crime game that runs offline in a desktop
 browser from static files — no network, no build step. Sun, sea, and Silas Kade
 owning every street: you are Marco Solis, a wheelman for hire, taking jobs from
-fixer Lena Voss across five story missions.
+fixer Lena Voss across five story missions:
+
+1. **First Wheels** — steal a car and bring it to Lena's garage.
+2. **The Pickup** — collect a package at the docks, deliver it to Club Mirada.
+3. **Payback** — take on Kade's crew at the warehouse, then lay low.
+4. **The Getaway** — steal a car and lose a two-star heat on the way to the safehouse.
+5. **King of Solmara** — end it at Marina Tower, face to face with Silas Kade.
 
 - **A city to explore** — Solmara: downtown towers, the marina, the docks, an
   industrial quarter, residential streets, parks, and Playa Sol beach, all on a
