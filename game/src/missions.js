@@ -28,7 +28,7 @@ export const MISSIONS = [
     reward: MONEY.missionReward[0],
     steps: [
       { type: 'steal', label: 'Steal a car', hint: 'Walk up to a parked or stopped car and press E.' },
-      stepGoto(PLACES.garage, 'Drive to Lena\'s Garage', 'Drive the car to the yellow marker.'),
+      stepGoto(PLACES.garage, "Drive to Lena's Garage", 'Drive the car to the yellow marker.'),
     ],
   },
   {
@@ -49,7 +49,7 @@ export const MISSIONS = [
     reward: MONEY.missionReward[2],
     steps: [
       stepGoto(PLACES.warehouse, 'Reach the Kade warehouse'),
-      { type: 'fight', x: PLACES.warehouse.x, y: PLACES.warehouse.y, count: 4, label: 'Deal with Kade\'s crew (0/4)', hint: 'Aim with the mouse, click to shoot, F to punch.' },
+      { type: 'fight', x: PLACES.warehouse.x, y: PLACES.warehouse.y, count: 4, label: "Deal with Kade's crew (0/4)", hint: 'Aim with the mouse, click to shoot, F to punch.' },
       stepGoto(PLACES.safehouse, 'Lay low at the safehouse'),
     ],
   },
@@ -61,7 +61,8 @@ export const MISSIONS = [
     wantedOnStart: 2,
     steps: [
       { type: 'steal', label: 'Steal a getaway car', hint: 'Any car will do. Press E beside one.' },
-      stepGoto(PLACES.safehouse, 'Reach the safehouse', 'Lose the cops on the way — or outrun them.'),
+      { type: 'evade', label: 'Lose the cops — get your wanted level to zero', hint: 'Outrun them, then lie low out of sight until the stars fade.' },
+      stepGoto(PLACES.safehouse, 'Reach the safehouse', 'The heat is off. Now slip away quietly.'),
     ],
   },
   {
@@ -71,7 +72,7 @@ export const MISSIONS = [
     reward: MONEY.missionReward[4],
     steps: [
       stepGoto(PLACES.marina, 'Reach Marina Tower'),
-      { type: 'fight', x: PLACES.marina.x, y: PLACES.marina.y, count: 6, label: 'Take down Kade\'s crew (0/6)', hint: 'Use cover. Health kits glow green.' },
+      { type: 'fight', x: PLACES.marina.x, y: PLACES.marina.y, count: 6, label: "Take down Kade's crew (0/6)", hint: 'Use cover. Health kits glow green.' },
       { type: 'fight', x: PLACES.marina.x, y: PLACES.marina.y + 60, count: 1, boss: true, label: 'Face Silas Kade', hint: 'Kade hits hard. Keep moving.' },
       stepGoto(PLACES.plaza, 'Walk free through Plaza Mayor'),
     ],
@@ -158,7 +159,7 @@ export function createMissionManager() {
   function objectiveTarget() {
     const s = currentStep();
     if (!s) return null;
-    if (s.type === 'steal') return null;
+    if (s.type === 'steal' || s.type === 'evade') return null;
     return { x: s.x, y: s.y };
   }
 

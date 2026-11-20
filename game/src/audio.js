@@ -1,7 +1,8 @@
 // Sound for Solmara, synthesised with WebAudio — no audio files, no network.
 // A tiny chiptune loop (bass + lead + hats), an engine hum that follows the
-// car's speed, a two-tone siren while the wanted level is up, and one-shot
-// effects for shots, punches, pickups and mission banners. M toggles mute.
+// car's speed, a two-tone siren while the wanted level is up, a skid scrape
+// when the handbrake slides, and one-shot effects for shots, punches, pickups
+// and mission banners. M toggles mute.
 export function createAudio() {
   let ctx = null;
   let master = null;
@@ -12,6 +13,7 @@ export function createAudio() {
   let sirenGain = null;
   let musicTimer = null;
   let musicStep = 0;
+  let skidAt = 0;
 
   // A sunny, slightly tense loop in A minor: bass walks, lead answers.
   // 190 ms a step keeps it brisk without rushing the driving.
@@ -142,6 +144,13 @@ export function createAudio() {
     punch() { noise(0.08, 0.18, 500); },
     pickup() { tone(660, 0.09, 'sine', 0.14); tone(990, 0.14, 'sine', 0.14, 0.08); },
     crime() { tone(220, 0.18, 'sawtooth', 0.1, 0, 110); },
+    /** A short tyre scrape; throttled so a long slide does not stack noise. */
+    skid() {
+      const now = ctx ? ctx.currentTime : 0;
+      if (now - skidAt < 0.25) return;
+      skidAt = now;
+      noise(0.18, 0.12, 2400);
+    },
     mission() {
       tone(523.25, 0.14, 'square', 0.1);
       tone(659.25, 0.14, 'square', 0.1, 0.13);

@@ -19,10 +19,20 @@ export const ROADS = {
 
 /** Districts, by block position. The beach is the whole southern strip. */
 export const DISTRICTS = {
-  downtown: { x0: 1000, x1: 2300, y0: 400, y1: 1600 },
-  marina: { x0: 2900, x1: 3600, y0: 400, y1: 2000 },
-  industrial: { x0: 0, x1: 900, y0: 0, y1: 900 },
+  downtown: { x0: 1000, x1: 2300, y0: 400, y1: 1600, name: 'Downtown Solmara' },
+  marina: { x0: 2900, x1: 3600, y0: 400, y1: 2000, name: 'Marina District' },
+  industrial: { x0: 0, x1: 900, y0: 0, y1: 900, name: 'Old Docks Quarter' },
+  residential: { x0: 0, x1: 3600, y0: 0, y1: 2800, name: 'Solmara' },
   beachY: 2450,
+  beach: { name: 'Playa Sol' },
+};
+
+/** Times of day for the sky tint the renderer paints over the city. */
+export const DAY = {
+  dawn: 6, morning: 9, dusk: 18, night: 21,
+  tintDawn: 'rgba(255, 150, 80, 0.10)',
+  tintDusk: 'rgba(255, 110, 60, 0.14)',
+  tintNight: 'rgba(20, 30, 80, 0.28)',
 };
 
 export const PLAYER = {
@@ -46,6 +56,10 @@ export const CAR = {
   steer: 2.7,
   grip: 3.4,
   stealWanted: 1,
+  /** A hard hit costs this much of a car's health; at 0 it stalls and smokes. */
+  health: 100,
+  crashDamage: 18,
+  handbrake: 900,
 };
 
 export const TRAFFIC = { count: 28, speed: 150, speedJitter: 60 };
@@ -58,12 +72,17 @@ export const POLICE = {
   arrestRange: 48,
   arrestTime: 2.2,
   spawnInterval: 4,
+  /** From this wanted level the police throw a roadblock across the road ahead. */
+  roadblockStars: 4,
 };
+
+export const SKID = { minSpeed: 260, markLife: 2.5 };
 
 /** Wanted stars 0..5. Crimes add heat; heat fades when the player lies low. */
 export const WANTED = {
   max: 5,
-  decaySeconds: 26,
+  /** Seconds lying low before one star drops; higher heat takes longer to lose. */
+  decaySeconds: [0, 22, 26, 32, 40, 50],
   copSightRange: 640,
   crime: { steal: 1, hitPed: 1, shoot: 1, killPed: 2, killCop: 2 },
 };
@@ -108,5 +127,5 @@ export const PALETTE = {
 export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
 /** Where the save lives (this browser only). */
-export const SAVE_KEY = 'solmara.save.v1';
+export const SAVE_KEY = 'solmara.save.v2';
 export const BEST_KEY = 'solmara.best.v1';

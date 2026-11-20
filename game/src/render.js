@@ -2,7 +2,7 @@
 // every screen. The 1280x720 view is scaled to fit the window and centred; the
 // camera follows the player and is clamped to the city. Flat shapes, warm
 // sun-soaked colours, soft shadows — all drawn from the world's state.
-import { CAR, DISTRICTS, FONT, PALETTE, PLAYER, ROADS, VIEW, WEAPONS, WORLD } from './config.js';
+import { CAR, DAY, DISTRICTS, FONT, PALETTE, PLAYER, ROADS, VIEW, WEAPONS, WORLD } from './config.js';
 import { PLACES } from './city.js';
 import { MISSION_COUNT, STORY } from './missions.js';
 
@@ -138,6 +138,39 @@ export function createRenderer(canvas) {
       }
     }
     drawRoads();
+    // Shipping containers in the docks quarter.
+    for (const c of city.containers) {
+      if (!inView(c.x + c.w / 2, c.y + c.h / 2, 80)) continue;
+      ctx.fillStyle = '#00000033';
+      ctx.fillRect(c.x + 4, c.y + 4, c.w, c.h);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(c.x, c.y, c.w, c.h);
+      ctx.strokeStyle = '#00000044';
+      ctx.lineWidth = 2;
+      for (let x = c.x + 12; x < c.x + c.w - 6; x += 16) {
+        ctx.beginPath();
+        ctx.moveTo(x, c.y + 4);
+        ctx.lineTo(x, c.y + c.h - 4);
+        ctx.stroke();
+      }
+    }
+    // Plaza Mayor's fountain — a roundabout at the intersection, so cars
+    // drive around it rather than through it.
+    if (inView(PLACES.plaza.x, PLACES.plaza.y, 120)) {
+      ctx.fillStyle = '#2e9db4';
+      ctx.beginPath();
+      ctx.arc(PLACES.plaza.x, PLACES.plaza.y, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7fc9d9';
+      ctx.beginPath();
+      ctx.arc(PLACES.plaza.x, PLACES.plaza.y, 12 + Math.sin(time * 2) * 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#b9b2a4';
+      ctx.beginPath();
+      ctx.arc(PLACES.plaza.x, PLACES.plaza.y, 28, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     // Buildings: a shaded side for height, then the roof.
     for (const b of city.buildings) {
       if (!inView(b.x + b.w / 2, b.y + b.h / 2, 160)) continue;
@@ -159,7 +192,7 @@ export function createRenderer(canvas) {
         ctx.fillRect(b.x + 8, b.y + 8, b.w - 16, 10);
       }
     }
-    // Trees.
+    // Trees and beach umbrellas.
     for (const t of city.trees) {
       if (!inView(t.x, t.y, 40)) continue;
       ctx.fillStyle = '#00000022';
@@ -175,6 +208,19 @@ export function createRenderer(canvas) {
       ctx.arc(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.45, 0, Math.PI * 2);
       ctx.fill();
     }
+    for (const u of city.umbrellas) {
+      if (!inView(u.x, u.y, 40)) continue;
+      ctx.fillStyle = u.color;
+      ctx.beginPath();
+      ctx.arc(u.x, u.y, 18, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#8a6d4b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(u.x, u.y);
+      ctx.lineTo(u.x, u.y + 14);
+      ctx.stroke();
+    }
     // Place labels.
     ctx.textAlign = 'center';
     for (const key of Object.keys(PLACES)) {
@@ -183,6 +229,20 @@ export function createRenderer(canvas) {
       plainText(p.name, p.x, p.y - 14, 15, '#ffffffdd', 'center');
     }
     void time;
+  }
+
+  function drawSkids(state) {
+    for (const s of state.skids) {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.angle);
+      ctx.globalAlpha = 0.45 * (s.life / s.max);
+      ctx.fillStyle = '#1c1a18';
+      ctx.fillRect(-14, -13, 28, 5);
+      ctx.fillRect(-14, 8, 28, 5);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawCar(car, time) {
@@ -195,6 +255,11 @@ export function createRenderer(canvas) {
     ctx.fillStyle = car.police ? PALETTE.copCar : car.color;
     roundRect(ctx, -CAR.length / 2, -CAR.width / 2, CAR.length, CAR.width, 8);
     ctx.fill();
+    // A wrecked car shows its damage: darkened hood, cracked windshield.
+    if (car.hp < 55) {
+      ctx.fillStyle = '#00000033';
+      ctx.fillRect(-CAR.length / 2 + 4, -CAR.width / 2 + 4, 18, CAR.width - 8);
+    }
     ctx.fillStyle = '#222831';
     ctx.fillRect(-8, -CAR.width / 2 + 4, 18, CAR.width - 8);
     ctx.fillStyle = '#3d4a5c';
@@ -212,6 +277,13 @@ export function createRenderer(canvas) {
       plainText('POLICE', 0, 4, 9, '#1d2a44', 'center');
     }
     ctx.restore();
+    // Smoke from a dying engine.
+    if (car.hp < 40 && Math.floor(time * 6) % 2 === 0) {
+      ctx.fillStyle = '#5a554866';
+      ctx.beginPath();
+      ctx.arc(car.x - Math.cos(car.angle) * 18, car.y - Math.sin(car.angle) * 18, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawPed(ped) {
@@ -325,6 +397,7 @@ export function createRenderer(canvas) {
 
   function drawWorld(state, city, missions, time) {
     drawCity(city, time);
+    drawSkids(state);
     // Objective beam and marker.
     const target = missions.objectiveTarget();
     if (target && inView(target.x, target.y, 100)) {
@@ -385,6 +458,18 @@ export function createRenderer(canvas) {
       ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
     }
     ctx.globalAlpha = 1;
+    // Time-of-day tint: dawn and dusk warm the city, night cools it.
+    const t = state.timeOfDay;
+    if (t >= DAY.dawn && t < DAY.morning) {
+      ctx.fillStyle = DAY.tintDawn;
+      ctx.fillRect(camera.x - 10, camera.y - 10, VIEW.width + 20, VIEW.height + 20);
+    } else if (t >= DAY.dusk && t < DAY.night) {
+      ctx.fillStyle = DAY.tintDusk;
+      ctx.fillRect(camera.x - 10, camera.y - 10, VIEW.width + 20, VIEW.height + 20);
+    } else if (t >= DAY.night || t < DAY.dawn) {
+      ctx.fillStyle = DAY.tintNight;
+      ctx.fillRect(camera.x - 10, camera.y - 10, VIEW.width + 20, VIEW.height + 20);
+    }
   }
 
   function drawMinimap(state, missions) {
@@ -454,7 +539,26 @@ export function createRenderer(canvas) {
     plainText('SOLMARA', x + w / 2, y - 8, 11, PALETTE.hudMuted, 'center');
   }
 
-  function drawHud(state, missions, time) {
+  function drawCrosshair(mouse) {
+    if (!mouse) return;
+    ctx.strokeStyle = 'rgba(244, 241, 232, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(mouse.x, mouse.y, 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(mouse.x - 14, mouse.y);
+    ctx.lineTo(mouse.x - 5, mouse.y);
+    ctx.moveTo(mouse.x + 5, mouse.y);
+    ctx.lineTo(mouse.x + 14, mouse.y);
+    ctx.moveTo(mouse.x, mouse.y - 14);
+    ctx.lineTo(mouse.x, mouse.y - 5);
+    ctx.moveTo(mouse.x, mouse.y + 5);
+    ctx.lineTo(mouse.x, mouse.y + 14);
+    ctx.stroke();
+  }
+
+  function drawHud(state, city, missions, time, mouse) {
     const p = state.player;
     // Top-left: money and health.
     ctx.fillStyle = PALETTE.hudPanel;
@@ -481,27 +585,31 @@ export function createRenderer(canvas) {
     // Top-centre: mission objective.
     const objective = missions.objectiveLabel();
     if (objective) {
-      const target = missions.objectiveTarget();
       let label = objective;
+      const target = missions.objectiveTarget();
       if (target) {
         const d = Math.round(Math.hypot(target.x - p.x, target.y - p.y) / 10);
         label += `  ·  ${d}m`;
       }
-      const w = ctx.measureText(label).width + 40;
       ctx.fillStyle = PALETTE.hudPanel;
       roundRect(ctx, (VIEW.width - 520) / 2, 14, 520, 40, 10);
       ctx.fill();
       ctx.fillStyle = PALETTE.objective;
       ctx.fillRect((VIEW.width - 520) / 2 + 14, 26, 8, 16);
       plainText(label, (VIEW.width - 520) / 2 + 34, 40, 16, PALETTE.hudText, 'left');
-      void w;
     }
-    // Clock.
+    // Clock and district.
     const hours = Math.floor(state.timeOfDay);
     const minutes = Math.floor((state.timeOfDay - hours) * 60);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const h12 = ((hours + 11) % 12) + 1;
-    plainText(`${h12}:${String(minutes).padStart(2, '0')} ${ampm}  ·  ${STORY.city}`, VIEW.width / 2, 76, 13, PALETTE.hudMuted, 'center');
+    plainText(`${h12}:${String(minutes).padStart(2, '0')} ${ampm}  ·  ${city.districtNameAt(p.x, p.y)}`, VIEW.width / 2, 76, 13, PALETTE.hudMuted, 'center');
+    // Roadblock warning at four stars and up, under the wanted panel so it
+    // never collides with the centre message line.
+    if (state.wanted >= 4) {
+      const flash = Math.floor(time * 3) % 2 === 0;
+      plainText('ROADBLOCK AHEAD', VIEW.width - 126, 92, 13, flash ? '#ff5a3c' : '#ffd23f', 'center');
+    }
     // Bottom-right: weapon and speed.
     const weapon = WEAPONS[p.weapon];
     ctx.fillStyle = PALETTE.hudPanel;
@@ -512,6 +620,13 @@ export function createRenderer(canvas) {
     if (p.inCar) {
       const mph = Math.round(Math.abs(p.inCar.speed) / 6.2);
       text(`${mph} mph`, VIEW.width - 30, VIEW.height - 84, 26, PALETTE.hudText, 'right');
+      // Car health bar under the speed.
+      ctx.fillStyle = '#3a3f45';
+      roundRect(ctx, VIEW.width - 150, VIEW.height - 76, 120, 6, 3);
+      ctx.fill();
+      ctx.fillStyle = p.inCar.hp > 40 ? '#7bf1a8' : '#ff5a3c';
+      roundRect(ctx, VIEW.width - 150, VIEW.height - 76, 120 * Math.max(0, p.inCar.hp / 100), 6, 3);
+      ctx.fill();
     }
     // Controls hint, first seconds of play.
     if (state.elapsed < 14 && !p.inCar) {
@@ -537,6 +652,7 @@ export function createRenderer(canvas) {
       if (m && missions.state.banner === m.title) plainText(m.brief, VIEW.width / 2, VIEW.height / 2 + 32, 15, PALETTE.hudMuted, 'center');
     }
     drawMinimap(state, missions);
+    if (!p.inCar) drawCrosshair(mouse);
   }
 
   function drawPanel(title, lines, prompt, accent) {
@@ -615,7 +731,7 @@ export function createRenderer(canvas) {
     ctx.translate(-camera.x, -camera.y);
     drawWorld(state, city, missions, time);
     ctx.restore();
-    drawHud(state, missions, time);
+    drawHud(state, city, missions, time, ui.mouse);
     if (screen === SCREEN_PAUSED) {
       ctx.fillStyle = 'rgba(10,14,20,0.6)';
       ctx.fillRect(0, 0, VIEW.width, VIEW.height);
@@ -631,8 +747,10 @@ export function createRenderer(canvas) {
         'WASD / arrows — move on foot, drive in a car',
         'Mouse — aim · Click — shoot / punch · Q — switch weapon',
         'E — steal or enter a car, E again to get out',
+        'Space — handbrake slide while driving',
         'Stealing, hitting people and shooting raise your wanted stars',
         'Police chase you while wanted — lose them to cool down',
+        'At four stars the police throw a roadblock across the road',
         'Follow the yellow marker: missions pay, and the story ends at Marina Tower',
         'F — save · M — mute · P — pause',
       ], 'P to go back');

@@ -27,6 +27,14 @@ function districtAt(x, y) {
   return 'residential';
 }
 
+/** The district name the HUD shows for a world position. */
+export function districtNameAt(x, y) {
+  const key = districtAt(x, y);
+  if (key === 'beach') return DISTRICTS.beach.name;
+  if (key === 'residential') return DISTRICTS.residential.name;
+  return DISTRICTS[key].name;
+}
+
 function onRoad(x, y, pad) {
   const p = pad ?? 0;
   for (const ax of avenues) if (Math.abs(x - ax) < ROAD_W / 2 + p) return true;
@@ -53,6 +61,8 @@ export function createCity(random) {
   const trees = [];
   const parks = [];
   const lots = [];
+  const containers = [];
+  const umbrellas = [];
 
   // One block sits between two neighbouring avenues and two streets.
   for (let ai = 0; ai < avenues.length - 1; ai += 1) {
@@ -79,6 +89,18 @@ export function createCity(random) {
       if (roll < 0.26) {
         // A parking lot with a few parked cars' painted bays.
         lots.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+        continue;
+      }
+      if (district === 'industrial' && roll < 0.42) {
+        // The docks quarter: stacked shipping containers instead of buildings.
+        const n = random.int(3, 5);
+        for (let i = 0; i < n; i += 1) {
+          containers.push({
+            x: random.range(x0 + 10, x1 - 90), y: random.range(y0 + 10, y1 - 50),
+            w: random.range(70, 110), h: 34,
+            color: random.pick(['#b8574e', '#3d7bd9', '#e8c33d', '#7fb069']),
+          });
+        }
         continue;
       }
       const tall = district === 'downtown';
@@ -109,14 +131,23 @@ export function createCity(random) {
     }
   }
 
-  // Palm trees along the beach promenade.
+  // Palm trees and umbrellas along the beach promenade.
   for (let x = 200; x < WORLD.width; x += 130) {
     trees.push({ x: x + random.range(-20, 20), y: DISTRICTS.beachY - 60, r: random.range(11, 15), palm: true });
+    if (random.chance(0.55)) {
+      umbrellas.push({
+        x: x + random.range(-30, 30), y: DISTRICTS.beachY + random.range(70, 160),
+        color: random.pick(['#d94f3d', '#e8c33d', '#3d7bd9', '#f4f1e8']),
+      });
+    }
   }
 
   function collidesBuilding(x, y, radius) {
     for (const b of buildings) {
       if (x + radius > b.x && x - radius < b.x + b.w && y + radius > b.y && y - radius < b.y + b.h) return b;
+    }
+    for (const c of containers) {
+      if (x + radius > c.x && x - radius < c.x + c.w && y + radius > c.y && y - radius < c.y + c.h) return c;
     }
     return null;
   }
@@ -124,7 +155,8 @@ export function createCity(random) {
   /** Push a circle out of every building it overlaps; returns true on a hit. */
   function resolveCircle(pos, radius) {
     let hit = false;
-    for (const b of buildings) {
+    const solids = buildings.concat(containers);
+    for (const b of solids) {
       const cx = Math.max(b.x, Math.min(pos.x, b.x + b.w));
       const cy = Math.max(b.y, Math.min(pos.y, b.y + b.h));
       const dx = pos.x - cx;
@@ -163,8 +195,8 @@ export function createCity(random) {
   }
 
   return {
-    buildings, trees, parks, lots,
-    districtAt, onRoad, nearestRoadPoint, collidesBuilding, resolveCircle,
+    buildings, trees, parks, lots, containers, umbrellas,
+    districtAt, districtNameAt, onRoad, nearestRoadPoint, collidesBuilding, resolveCircle,
     randomRoadPoint, randomWalkPoint,
   };
 }

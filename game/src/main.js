@@ -7,7 +7,7 @@
 // sets window.__shotReady for a screenshot.
 import { STEP } from './config.js';
 import { createRandom } from './random.js';
-import { createWorld, EVENT_BUSTED, EVENT_CRIME, EVENT_MISSION_DONE, EVENT_PICKUP, EVENT_PUNCH, EVENT_SHOT, EVENT_WASTED } from './world.js';
+import { createWorld, EVENT_BUSTED, EVENT_CRIME, EVENT_MISSION_DONE, EVENT_PICKUP, EVENT_PUNCH, EVENT_SHOT, EVENT_SKID, EVENT_WASTED } from './world.js';
 import { ACTION_CONFIRM, ACTION_CONTINUE, ACTION_ENTER_CAR, ACTION_MUTE, ACTION_PAUSE, ACTION_SAVE, ACTION_WEAPON, createInput } from './input.js';
 import { createRenderer, SCREEN_BUSTED, SCREEN_END, SCREEN_HELP, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WASTED } from './render.js';
 import { createAudio } from './audio.js';
@@ -30,7 +30,7 @@ const audio = createAudio();
 
 function runShot(name) {
   const scene = stageShot(name, world);
-  const ui = { hasSave: false, best: scene.best };
+  const ui = { hasSave: false, best: scene.best, mouse: { x: 640, y: 360 } };
   let painted = 0;
   function paint() {
     renderer.draw(world.state, world.city, world.missions, scene.screen, ui);
@@ -127,25 +127,18 @@ function runGame() {
   function aimAngle() {
     const p = world.player;
     const mouse = input.mouse();
-    const rect = canvas.getBoundingClientRect();
-    // Mouse in view space -> world space, through the camera.
-    const scaleX = 1280 / rect.width;
-    const scaleY = 720 / rect.height;
-    const viewX = (mouse.x - 0) * 1; // mouse is already in 1280x720 view space
-    const viewY = mouse.y;
-    void scaleX; void scaleY;
-    // The camera sits at the player's screen centre: recover it from the
-    // player's screen position by inverting the view transform.
+    // Mouse is already in 1280x720 view space; the camera centres on the
+    // player, clamped to the city, so invert that transform to reach the world.
     const camX = Math.max(0, Math.min(3600 - 1280, p.x - 640));
     const camY = Math.max(0, Math.min(2800 - 720, p.y - 360));
-    return Math.atan2(camY + viewY - p.y, camX + viewX - p.x);
+    return Math.atan2(camY + mouse.y - p.y, camX + mouse.x - p.x);
   }
 
   function step() {
     const keys = input.keys;
     const mouse = input.mouse();
     if (screen === SCREEN_TITLE) {
-      world.step(STEP, { up: false, down: false, left: false, right: false, run: false });
+      world.step(STEP, { up: false, down: false, left: false, right: false, run: false, handbrake: false });
       return;
     }
     if (screen !== SCREEN_PLAY) return;
@@ -157,6 +150,7 @@ function runGame() {
     if (events & EVENT_PUNCH) audio.punch();
     if (events & EVENT_PICKUP) audio.pickup();
     if (events & EVENT_CRIME) audio.crime();
+    if (events & EVENT_SKID) audio.skid();
     if (events & EVENT_MISSION_DONE) {
       audio.mission();
       storeBestMoney(p.money);
@@ -188,7 +182,7 @@ function runGame() {
     } else {
       accumulator = 0;
     }
-    renderer.draw(world.state, world.city, world.missions, screen, { hasSave: !!save, best });
+    renderer.draw(world.state, world.city, world.missions, screen, { hasSave: !!save, best, mouse: input.mouse() });
   }
 
   // Leaving the tab pauses a running game rather than letting the city run on.

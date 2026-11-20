@@ -26,11 +26,11 @@ const LOOP = [
 function driveInput(world, targetAngle) {
   const player = world.player;
   const car = player.inCar;
-  if (!car) return { up: false, down: false, left: false, right: false, run: false };
+  if (!car) return { up: false, down: false, left: false, right: false, run: false, handbrake: false };
   let diff = targetAngle - car.angle;
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
-  return { up: true, down: false, left: diff < -0.08, right: diff > 0.08, run: false };
+  return { up: true, down: false, left: diff < -0.08, right: diff > 0.08, run: false, handbrake: false };
 }
 
 function stageDrive(world, seconds, wanted) {
@@ -101,7 +101,7 @@ export function stageShot(name, world) {
     const steps = Math.round(MISSION_SECONDS / STEP);
     let shotsFired = 0;
     for (let i = 0; i < steps; i += 1) {
-      const input = { up: false, down: false, left: false, right: false, run: false };
+      const input = { up: false, down: false, left: false, right: false, run: false, handbrake: false };
       // Walk toward the warehouse so the crew spawns and the fight opens.
       const dx = PLACES.warehouse.x - p.x;
       const dy = PLACES.warehouse.y - p.y;
@@ -128,7 +128,7 @@ export function stageShot(name, world) {
   // start (and any unknown name): the title over a living city.
   const steps = Math.round(5 / STEP);
   for (let i = 0; i < steps; i += 1) {
-    world.step(STEP, { up: false, down: false, left: false, right: false, run: false });
+    world.step(STEP, { up: false, down: false, left: false, right: false, run: false, handbrake: false });
   }
   return { screen: SCREEN_TITLE, best: 0 };
 }

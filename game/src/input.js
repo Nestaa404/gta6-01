@@ -2,6 +2,7 @@
 // one-shot presses (enter car, switch weapon, pause, confirm) are queued as bit
 // flags and taken once by the loop, so a press between two frames is never lost.
 // The mouse aims on foot: the game reads its screen position each frame.
+// Space doubles as the handbrake while driving and as confirm on the menus.
 import { VIEW } from './config.js';
 
 export const ACTION_CONFIRM = 1;
@@ -17,6 +18,7 @@ const DOWN = new Set(['ArrowDown', 'KeyS']);
 const LEFT = new Set(['ArrowLeft', 'KeyA']);
 const RIGHT = new Set(['ArrowRight', 'KeyD']);
 const RUN = new Set(['ShiftLeft', 'ShiftRight']);
+const HANDBRAKE = new Set(['Space']);
 const CONFIRM = new Set(['Space', 'Enter']);
 const PAUSE = new Set(['KeyP', 'Escape']);
 const ENTER_CAR = new Set(['KeyE']);
@@ -26,7 +28,7 @@ const SAVE = new Set(['KeyF']);
 const CONTINUE = new Set(['KeyC']);
 
 export function createInput(canvas) {
-  const keys = { up: false, down: false, left: false, right: false, run: false };
+  const keys = { up: false, down: false, left: false, right: false, run: false, handbrake: false };
   let actions = 0;
   let mouse = { x: VIEW.width / 2, y: VIEW.height / 2, down: false, pressed: false };
 
@@ -36,6 +38,7 @@ export function createInput(canvas) {
     else if (LEFT.has(code)) keys.left = value;
     else if (RIGHT.has(code)) keys.right = value;
     else if (RUN.has(code)) keys.run = value;
+    else if (HANDBRAKE.has(code)) keys.handbrake = value;
   }
 
   window.addEventListener('keydown', (event) => {
@@ -62,7 +65,7 @@ export function createInput(canvas) {
   });
   window.addEventListener('keyup', (event) => setKey(event.code, false));
   window.addEventListener('blur', () => {
-    keys.up = keys.down = keys.left = keys.right = keys.run = false;
+    keys.up = keys.down = keys.left = keys.right = keys.run = keys.handbrake = false;
     mouse.down = false;
   });
 
