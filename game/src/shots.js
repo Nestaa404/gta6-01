@@ -1,79 +1,134 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward from a
-// fresh world for a fixed number of steps, steered by a simple autopilot (look ahead each way the
-// paddle could move, keep clear of blocks, chase the lowest coin when that is safe), so the frame
-// is what a short game really looks like and the same seed always gives the same frame.
-import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, KIND_BLOCK } from './world.js';
-import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+// The screenshot scenes behind ?shot=start|play|chase|mission. Each one plays
+// the real rules forward from a fresh world for a fixed number of steps, steered
+// by a small autopilot, so the frame is what real play looks like and the same
+// seed always gives the same frame.
+//
+// start  — the title screen over downtown Solmara.
+// play   — driving a stolen car down an avenue, traffic and pedestrians around.
+// chase  — three wanted stars, police cars closing in on a getaway.
+// mission— mission 3 in progress: Kade's crew at the warehouse, marker on the HUD.
+import { CAR, STEP } from './config.js';
+import { PLACES } from './city.js';
+import { SCREEN_BUSTED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 
-const START_SECONDS = 5;
-const PLAY_SECONDS = 26;
-const END_LIMIT_SECONDS = 600;
-/**
- * How far ahead, in seconds, the autopilot checks each way it could move: the play scene's pilot
- * looks well ahead and keeps all its lives; the end scene's looks only a moment ahead, so it is
- * caught out once the blocks speed up, as a hurried player is.
- */
-const HORIZON_PLAY = 0.7;
-const HORIZON_END = 0.25;
-const SAMPLE = 1 / 30;
-const DIRECTIONS = [0, -1, 1];
-/** Extra room, each side, it keeps between the paddle and a block. */
-const MARGIN = 10;
+const DRIVE_SECONDS = 10;
+const CHASE_SECONDS = 15;
+const MISSION_SECONDS = 3.5;
 
-/** Seconds until moving in `direction` (-1, 0, 1) runs the paddle into a block; Infinity when it never does. */
-function timeToHit(state, direction, horizon) {
-  const player = state.player;
-  for (let t = SAMPLE; t <= horizon; t += SAMPLE) {
-    const x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * t));
-    for (let index = 0; index < state.items.length; index += 1) {
-      const item = state.items[index];
-      if (!item.active || item.kind !== KIND_BLOCK) continue;
-      const y = item.y + item.speed * t;
-      if (y + item.height > player.y && y < player.y + player.height && item.x < x + player.width + MARGIN && item.x + item.width > x - MARGIN) return t;
-    }
-  }
-  return Infinity;
+/** A loop around downtown Solmara the autopilot drives, so the shot stays in the city. */
+const LOOP = [
+  { x: 2100, y: 650 },
+  { x: 2100, y: 1050 },
+  { x: 1650, y: 1050 },
+  { x: 1650, y: 650 },
+];
+
+function driveInput(world, targetAngle) {
+  const player = world.player;
+  const car = player.inCar;
+  if (!car) return { up: false, down: false, left: false, right: false, run: false };
+  let diff = targetAngle - car.angle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return { up: true, down: false, left: diff < -0.08, right: diff > 0.08, run: false };
 }
 
-/** Of the safe ways to move, the one toward the lowest coin (or the centre); else the one that is hit last. */
-function autopilot(state, horizon) {
-  const player = state.player;
-  let coin = null;
-  for (let index = 0; index < state.items.length; index += 1) {
-    const item = state.items[index];
-    if (item.active && item.kind !== KIND_BLOCK && (coin === null || item.y > coin.y)) coin = item;
+function stageDrive(world, seconds, wanted) {
+  // Put the player in a car on a downtown street and let the autopilot drive
+  // the loop, so the frame shows the city, traffic and the HUD — not the sea.
+  const car = world.state.cars[0] ?? null;
+  const player = world.player;
+  if (car) {
+    car.x = 1650; car.y = 650;
+    car.angle = 0;
+    car.color = '#f2c94c';
+    car.traffic = false; car.parked = false;
+    player.inCar = car;
+    player.x = car.x; player.y = car.y; player.angle = car.angle;
   }
-  const target = coin === null ? FIELD.width / 2 : coin.x + coin.width / 2;
-  const centre = player.x + player.width / 2;
-  const wanted = target > centre + 8 ? 1 : target < centre - 8 ? -1 : 0;
-  let best = wanted;
-  let bestTime = timeToHit(state, wanted, horizon);
-  for (let index = 0; index < DIRECTIONS.length && bestTime !== Infinity; index += 1) {
-    const time = timeToHit(state, DIRECTIONS[index], horizon);
-    if (time > bestTime) {
-      bestTime = time;
-      best = DIRECTIONS[index];
+  // The steal already raised one star; set the exact wanted level for the shot.
+  world.state.wanted = 0;
+  if (wanted > 0) world.addWanted(wanted, '');
+  let waypoint = 0;
+  let lastX = player.x;
+  let lastY = player.y;
+  let stuckChecks = 0;
+  const steps = Math.round(seconds / STEP);
+  for (let i = 0; i < steps; i += 1) {
+    const target = LOOP[waypoint];
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    if (dx * dx + dy * dy < 70 * 70) waypoint = (waypoint + 1) % LOOP.length;
+    world.step(STEP, driveInput(world, Math.atan2(dy, dx)));
+    // Anti-stuck: a pile-up with traffic can wedge the car on a building
+    // corner; if it barely moved in the last second, put it back on the loop.
+    stuckChecks += 1;
+    if (stuckChecks >= 60) {
+      stuckChecks = 0;
+      const moved = Math.hypot(player.x - lastX, player.y - lastY);
+      lastX = player.x;
+      lastY = player.y;
+      if (moved < 40 && player.inCar) {
+        const at = LOOP[waypoint];
+        const next = LOOP[(waypoint + 1) % LOOP.length];
+        player.inCar.x = at.x;
+        player.inCar.y = at.y;
+        player.inCar.angle = Math.atan2(next.y - at.y, next.x - at.x);
+        player.inCar.speed = 220;
+      }
     }
   }
-  return best;
 }
 
-/**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
- */
 export function stageShot(name, world) {
   world.reset();
-  if (name !== 'play' && name !== 'end') {
-    for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, 0, true);
-    return { screen: SCREEN_TITLE, best: 0 };
+  if (name === 'play') {
+    stageDrive(world, DRIVE_SECONDS, 0);
+    return { screen: SCREEN_PLAY, best: 0 };
   }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
-  const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
-  for (let index = 0; index < limit / STEP; index += 1) {
-    if (world.step(STEP, autopilot(world.state, horizon), false) & EVENT_OVER) break;
+  if (name === 'chase') {
+    stageDrive(world, CHASE_SECONDS, 3);
+    return { screen: SCREEN_PLAY, best: 0 };
   }
-  const over = world.state.lives === 0;
-  return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
+  if (name === 'mission') {
+    // Mission 3: walk to the warehouse, crew spawns, fight starts.
+    world.missions.start(2);
+    const p = world.player;
+    p.x = PLACES.warehouse.x + 180;
+    p.y = PLACES.warehouse.y + 220;
+    p.weapon = 'pistol';
+    p.ammo.pistol = 60;
+    const steps = Math.round(MISSION_SECONDS / STEP);
+    let shotsFired = 0;
+    for (let i = 0; i < steps; i += 1) {
+      const input = { up: false, down: false, left: false, right: false, run: false };
+      // Walk toward the warehouse so the crew spawns and the fight opens.
+      const dx = PLACES.warehouse.x - p.x;
+      const dy = PLACES.warehouse.y - p.y;
+      input.left = dx < -8;
+      input.right = dx > 8;
+      input.up = dy < -8;
+      input.down = dy > 8;
+      world.step(STEP, input);
+      if (world.state.enemies.some((e) => !e.dead) && shotsFired < 3 && i % 55 === 0) {
+        // Fire a few shots at the nearest crew member for a live-fire frame,
+        // but leave the crew standing so the fight still reads.
+        const e = world.state.enemies.find((e2) => !e2.dead);
+        if (e) {
+          world.playerAttack(Math.atan2(e.y - p.y, e.x - p.x));
+          shotsFired += 1;
+        }
+      }
+    }
+    return { screen: SCREEN_PLAY, best: 0 };
+  }
+  if (name === 'busted') {
+    return { screen: SCREEN_BUSTED, best: 0 };
+  }
+  // start (and any unknown name): the title over a living city.
+  const steps = Math.round(5 / STEP);
+  for (let i = 0; i < steps; i += 1) {
+    world.step(STEP, { up: false, down: false, left: false, right: false, run: false });
+  }
+  return { screen: SCREEN_TITLE, best: 0 };
 }

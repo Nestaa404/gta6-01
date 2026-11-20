@@ -1,17 +1,20 @@
-// Boot and the one loop: input is read every frame, the world advances in fixed 1/60 s steps
-// (several in a slow frame, none in a fast one), and the renderer paints what is there. The game
-// moves between four screens: title, play, paused and game over.
+// Boot and the one loop for Solmara: input is read every frame, the world
+// advances in fixed 1/60 s steps, the renderer paints what is there. The game
+// moves between title, play, paused, help, busted, wasted and end screens.
 //
-// ?seed=N fixes the falling pattern. ?shot=start|play|end (with &seed=N) stages that scene
-// instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, LIVES, STEP } from './config.js';
+// ?seed=N fixes the city and the traffic. ?shot=start|play|chase|mission (with
+// &seed=N) stages that scene instead of running the loop, paints it twice and
+// sets window.__shotReady for a screenshot.
+import { STEP } from './config.js';
 import { createRandom } from './random.js';
-import { createWorld, EVENT_HIT, EVENT_OVER } from './world.js';
-import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
-import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+import { createWorld, EVENT_BUSTED, EVENT_CRIME, EVENT_MISSION_DONE, EVENT_PICKUP, EVENT_PUNCH, EVENT_SHOT, EVENT_WASTED } from './world.js';
+import { ACTION_CONFIRM, ACTION_CONTINUE, ACTION_ENTER_CAR, ACTION_MUTE, ACTION_PAUSE, ACTION_SAVE, ACTION_WEAPON, createInput } from './input.js';
+import { createRenderer, SCREEN_BUSTED, SCREEN_END, SCREEN_HELP, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WASTED } from './render.js';
+import { createAudio } from './audio.js';
+import { clearSave, loadSave, readBestMoney, storeBestMoney, storeSave } from './save.js';
 import { stageShot } from './shots.js';
 
-/** The longest frame the loop catches up on; a longer stall (a hidden tab) is dropped, not replayed. */
+/** The longest frame the loop catches up on; a longer stall is dropped. */
 const MAX_FRAME = 0.25;
 
 const params = new URLSearchParams(window.location.search);
@@ -23,28 +26,14 @@ const canvas = document.getElementById('game');
 const status = document.getElementById('status');
 const world = createWorld(createRandom(seed));
 const renderer = createRenderer(canvas);
-
-function readBest() {
-  try {
-    return Number.parseInt(window.localStorage.getItem(BEST_KEY) ?? '0', 10) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function saveBest(value) {
-  try {
-    window.localStorage.setItem(BEST_KEY, String(value));
-  } catch {
-    // Storage can be off (private windows): the best score then lasts this visit only.
-  }
-}
+const audio = createAudio();
 
 function runShot(name) {
   const scene = stageShot(name, world);
+  const ui = { hasSave: false, best: scene.best };
   let painted = 0;
   function paint() {
-    renderer.draw(world.state, scene.screen, scene.best);
+    renderer.draw(world.state, world.city, world.missions, scene.screen, ui);
     painted += 1;
     if (painted < 2) requestAnimationFrame(paint);
     else window.__shotReady = true;
@@ -55,51 +44,135 @@ function runShot(name) {
 function runGame() {
   const input = createInput(canvas);
   let screen = SCREEN_TITLE;
-  let best = readBest();
+  let best = readBestMoney();
+  let save = loadSave();
   let accumulator = 0;
   let last = performance.now();
 
-  // Screen readers (and anyone watching the page's text) hear the screen changes and each hit.
   function announce(message) {
     status.textContent = message;
   }
 
-  function startGame() {
-    world.reset();
-    accumulator = 0;
-    screen = SCREEN_PLAY;
-    announce(`Playing. ${LIVES} lives.`);
+  function saveGame() {
+    const data = world.toSave();
+    if (storeSave(data)) {
+      world.showMessage('Progress saved.');
+      announce('Progress saved.');
+    } else {
+      world.showMessage('Could not save in this browser.');
+    }
   }
 
-  function endGame() {
-    screen = SCREEN_OVER;
-    if (world.state.score > best) {
-      best = world.state.score;
-      saveBest(best);
+  function startGame(fresh) {
+    audio.unlock();
+    if (fresh) {
+      clearSave();
+      save = null;
+      world.reset();
+    } else if (save) {
+      world.loadSave(save);
+    } else {
+      world.reset();
     }
-    announce(`Game over. Score ${world.state.score}. Best ${best}.`);
+    accumulator = 0;
+    screen = SCREEN_PLAY;
+    announce('Playing Solmara. Follow the yellow marker.');
   }
 
   function handleActions() {
     const actions = input.takeActions();
-    if (actions & ACTION_CONFIRM && (screen === SCREEN_TITLE || screen === SCREEN_OVER)) startGame();
-    else if (actions & ACTION_PAUSE && screen === SCREEN_PLAY) {
+    if (actions & ACTION_MUTE) {
+      audio.setMuted(!audio.isMuted());
+      world.showMessage(audio.isMuted() ? 'Sound off (M to turn on)' : 'Sound on');
+    }
+    if (screen === SCREEN_TITLE) {
+      if (actions & ACTION_CONFIRM) startGame(true);
+      else if (actions & ACTION_CONTINUE) {
+        // C loads the save when there is one.
+        if (save) startGame(false);
+      }
+      return;
+    }
+    if (screen === SCREEN_BUSTED || screen === SCREEN_WASTED || screen === SCREEN_END) {
+      if (actions & ACTION_CONFIRM) {
+        world.reset();
+        screen = SCREEN_PLAY;
+      }
+      return;
+    }
+    if (screen === SCREEN_PAUSED) {
+      if (actions & ACTION_PAUSE || actions & ACTION_CONFIRM) screen = SCREEN_PLAY;
+      else if (actions & ACTION_SAVE) saveGame();
+      return;
+    }
+    if (screen === SCREEN_HELP) {
+      if (actions & ACTION_PAUSE || actions & ACTION_CONFIRM) screen = SCREEN_PAUSED;
+      return;
+    }
+    // SCREEN_PLAY
+    if (actions & ACTION_PAUSE) {
       screen = SCREEN_PAUSED;
       announce('Paused.');
-    } else if (actions & (ACTION_PAUSE | ACTION_CONFIRM) && screen === SCREEN_PAUSED) {
-      screen = SCREEN_PLAY;
-      announce('Playing.');
+    } else if (actions & ACTION_SAVE) {
+      saveGame();
+    } else if (actions & ACTION_ENTER_CAR) {
+      const result = world.enterExitCar();
+      if (result === 'enter') audio.click();
+    } else if (actions & ACTION_WEAPON) {
+      world.switchWeapon();
+      audio.click();
     }
   }
 
+  function aimAngle() {
+    const p = world.player;
+    const mouse = input.mouse();
+    const rect = canvas.getBoundingClientRect();
+    // Mouse in view space -> world space, through the camera.
+    const scaleX = 1280 / rect.width;
+    const scaleY = 720 / rect.height;
+    const viewX = (mouse.x - 0) * 1; // mouse is already in 1280x720 view space
+    const viewY = mouse.y;
+    void scaleX; void scaleY;
+    // The camera sits at the player's screen centre: recover it from the
+    // player's screen position by inverting the view transform.
+    const camX = Math.max(0, Math.min(3600 - 1280, p.x - 640));
+    const camY = Math.max(0, Math.min(2800 - 720, p.y - 360));
+    return Math.atan2(camY + viewY - p.y, camX + viewX - p.x);
+  }
+
   function step() {
+    const keys = input.keys;
+    const mouse = input.mouse();
     if (screen === SCREEN_TITLE) {
-      world.step(STEP, 0, true);
+      world.step(STEP, { up: false, down: false, left: false, right: false, run: false });
       return;
     }
-    const events = world.step(STEP, input.direction(), false);
-    if (events & EVENT_OVER) endGame();
-    else if (events & EVENT_HIT) announce(world.state.lives === 1 ? 'Hit. 1 life left.' : `Hit. ${world.state.lives} lives left.`);
+    if (screen !== SCREEN_PLAY) return;
+    const p = world.player;
+    if (!p.inCar) p.angle = aimAngle();
+    if (mouse.down && !p.inCar) world.playerAttack(p.angle);
+    const events = world.step(STEP, keys);
+    if (events & EVENT_SHOT) audio.shoot();
+    if (events & EVENT_PUNCH) audio.punch();
+    if (events & EVENT_PICKUP) audio.pickup();
+    if (events & EVENT_CRIME) audio.crime();
+    if (events & EVENT_MISSION_DONE) {
+      audio.mission();
+      storeBestMoney(p.money);
+      best = readBestMoney();
+      if (world.missions.state.index >= 5) screen = SCREEN_END;
+    }
+    if (events & EVENT_BUSTED) {
+      audio.busted();
+      screen = SCREEN_BUSTED;
+      announce('Busted. Press Enter to continue.');
+    } else if (events & EVENT_WASTED) {
+      audio.busted();
+      screen = SCREEN_WASTED;
+      announce('Wasted. Press Enter to continue.');
+    }
+    audio.update(world.player.inCar ? Math.abs(world.player.inCar.speed) : 0, world.state.wanted, world.state.elapsed);
   }
 
   function frame(now) {
@@ -115,10 +188,10 @@ function runGame() {
     } else {
       accumulator = 0;
     }
-    renderer.draw(world.state, screen, best);
+    renderer.draw(world.state, world.city, world.missions, screen, { hasSave: !!save, best });
   }
 
-  // Leaving the tab pauses a running game rather than letting blocks fall unseen.
+  // Leaving the tab pauses a running game rather than letting the city run on.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && screen === SCREEN_PLAY) {
       screen = SCREEN_PAUSED;
@@ -126,7 +199,12 @@ function runGame() {
     }
   });
 
-  announce('Block Dodger. Press Space or click to start.');
+  // H shows the how-to-play screen from the pause menu.
+  window.addEventListener('keydown', (event) => {
+    if (event.code === 'KeyH' && screen === SCREEN_PAUSED) screen = SCREEN_HELP;
+  });
+
+  announce('Solmara. Press Enter to start the story, C to continue.');
   requestAnimationFrame(frame);
 }
 
