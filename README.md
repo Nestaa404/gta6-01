@@ -1,69 +1,89 @@
-# Solmara — An Open-World Crime Story
+# Solmara — an open-world crime game
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/Nestaa404/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/Nestaa404/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![make.fun bounty](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01)
+[![rank](https://make.fun/badge/gta6-01/Nestaa404/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01)
+[![reward](https://make.fun/badge/gta6-01/Nestaa404/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01)
 
-Entry for make.fun bounty `gta6-01` — build the most complete open-world crime game:
-https://make.fun/bounty/gta6-01
+Entry for make.fun bounty — [Make GTA 6](https://make.fun/bounty/gta6-01)
 
-`main.ts` (Node 22, standard library only) copies the static browser game in
-`game/` plus `screenshots/` to `/output` and writes `dossier.json` with the
-vendored make.fun library.
+**Solmara** is an original top-down open-world crime game that runs
+entirely offline in a desktop browser. No Rockstar assets, names or
+maps — just a sun-soaked coastal city of its own, built from scratch
+in plain Canvas 2D with no libraries and no network requests.
 
-## The game
+## The city
 
-**Solmara** is an original open-world crime game that runs offline in a desktop
-browser from static files — no network, no build step. Sun, sea, and Silas Kade
-owning every street: you are Marco Solis, a wheelman for hire, taking jobs from
-fixer Lena Voss across five story missions:
+Solmara is a 3200×3200-pixel coastal city: a road grid of downtown
+blocks with coloured rooftops, a palm park, a beach with animated
+waves on the south shore, and a marina on the east edge. Traffic
+cruises the roads, pedestrians stroll the sidewalks and flee from
+danger, and parked cars line the kerbs waiting to be borrowed.
 
-1. **First Wheels** — steal a car and bring it to Lena's garage.
-2. **The Pickup** — collect a package at the docks, deliver it to Club Mirada.
-3. **Payback** — take on Kade's crew at the warehouse, then lay low.
-4. **The Getaway** — steal a car, lose a two-star heat, and reach the safehouse.
-5. **King of Solmara** — end it at Marina Tower, face to face with Silas Kade.
+## What you can do
 
-- **A city to explore** — Solmara: downtown towers, the marina, the docks,
-  an industrial quarter, residential streets, parks, and Playa Sol beach, all
-  on a 3600×2800 map with traffic and pedestrians living their own lives.
-  The day drifts from morning toward dusk and night as you play.
-- **On foot and by car** — walk, run, steal any car (E), drive with real
-  acceleration, steering and a handbrake slide (Space) that leaves skid
-  marks, and run from the consequences. Hard crashes dent and smoke your
-  car until the engine dies.
-- **Wanted level + police** — five stars. Stealing, hitting pedestrians and
-  shooting raise the heat; police cars chase and ram you, foot cops try to
-  arrest you, and at four stars they throw a roadblock across the road
-  ahead. A bigger heat takes longer to cool — lie low to lose it, or get
-  busted or wasted.
-- **Missions and a story** — five missions with a waypoint marker, objectives
-  and payouts, ending in a showdown with Silas Kade at Marina Tower.
-- **Combat** — fists, pistol and shotgun with mouse aim and a crosshair,
-  health and ammo pickups, enemy crews that shoot back.
-- **HUD + minimap** — money, health, wanted stars, weapon and ammo, speed,
-  car health, mission objective with distance, the district you are in, a
-  live minimap, and a clock.
-- **Start and save** — title screen with New Game / Continue, pause menu,
-  and progress saved in the browser (F), including kills and cars stolen.
-- **Sound** — synthesised with WebAudio: a chiptune loop, engine hum, sirens,
-  skid scrapes, gunshots. No audio files.
+- **Explore on foot** — WASD to walk, Shift to run, mouse to aim.
+- **Steal and drive cars** — walk up to any car and press E. Arcade
+  handling with acceleration, braking, reverse and a handbrake.
+- **Wanted level** — stealing cars, hitting pedestrians and shooting
+  raise your stars (0–5). Police cars chase and ram you; police on
+  foot close in and arrest you. Stay out of sight and the heat fades.
+- **Combat** — click or press F to shoot. Bullets hit walls, cars,
+  pedestrians and police.
+- **Missions and story** — four jobs from Rico, your fixer: steal a
+  getaway car, make a timed delivery, lose a three-star chase, and
+  pull the Marina Job. Each pays out and unlocks the next.
+- **HUD and minimap** — health, money, wanted stars, speedometer,
+  mission objective bar and a live minimap with the player, police
+  and objective marker.
+- **Save** — progress (money, finished missions, position) saves to
+  localStorage automatically on mission completion and with S in the
+  pause menu; Continue resumes it from the title screen.
+- **Sound** — fully synthesized with Web Audio: engine hum, police
+  siren, gunshots, crashes and mission jingles. M mutes.
 
-## Run it
+## Controls
+
+| Key | Action |
+| --- | --- |
+| W A S D / Arrows | Move / drive |
+| Shift | Run |
+| E | Enter / exit car |
+| Mouse + Click / F | Aim and shoot |
+| Space | Handbrake |
+| T | Talk to Rico (next mission) |
+| P / Esc | Pause |
+| M | Mute sound |
+| S (in pause) | Save game |
+| R (after busted / wasted) | Try again |
+
+## Play it
 
 ```sh
 node serve.ts
-# then open http://localhost:8080
+# open http://localhost:8080
 ```
 
-Play: WASD move / drive · Shift run · mouse aim · click shoot · E steal & enter
-cars · Space handbrake · Q switch weapon · F save · P pause · H how to play ·
-M mute.
+No build step, no dependencies: `game/index.html` plus its ES
+modules under `game/src/` is the whole game.
 
-## Screenshots
+## Layout
 
-`shots.json` lists the four staged shots; `?shot=start|play|chase|mission`
-with `&seed=7` reproduces each one deterministically from the real game.
+- `game/index.html` — the page and its canvas.
+- `game/src/main.js` — game loop, state machine, boot.
+- `game/src/world.js` — deterministic city generation and collision.
+- `game/src/entities.js` — player, cars, traffic, pedestrians, bullets.
+- `game/src/police.js` — wanted level and police AI.
+- `game/src/missions.js` — the four missions and their story.
+- `game/src/render.js` — camera, world, HUD, minimap and screens.
+- `game/src/audio.js` — synthesized Web Audio sound.
+- `game/src/input.js` — keyboard and mouse.
+- `game/src/save.js` — localStorage save / load.
+- `game/src/shots.js` — staged screenshot scenes (`?shot=...`).
+- `game/src/config.js` — tuning numbers and palette.
+- `game/src/util.js` — math and seeded random helpers.
+- `main.ts` — the entrypoint: copies `game/` and `screenshots/` to
+  the output and writes `dossier.json`.
 
-Built by Brio and sub-agents for @anesta-s-kurniawansyah. All city, characters,
-names, story, art and music are original — nothing from any commercial game.
+## License
+
+MIT — see `LICENSE`.

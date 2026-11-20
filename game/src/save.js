@@ -1,25 +1,34 @@
-// Saving for Solmara: the whole progress (position, health, money, mission) is
-// one small JSON object in localStorage. Reads and writes never throw — a
-// browser with storage off just plays without saving.
-//
-// Version 2 saves carry the run's stats (kills, cars stolen) as well; version 1
-// saves from an older build still load, with stats starting at zero.
-import { BEST_KEY, SAVE_KEY } from './config.js';
+// Solmara — saving and loading. Progress lives in localStorage under
+// one key: money, finished missions, the player's position and health.
+// Nothing else is persisted; traffic and police are rebuilt fresh on
+// every load so a save can never go stale.
 
-export const SAVE_VERSION = 2;
+import { CFG } from './config.js';
 
-function read(key) {
+export function hasSave() {
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
+    return !!window.localStorage.getItem(CFG.saveKey);
   } catch {
-    return null;
+    return false;
   }
 }
 
-function write(key, value) {
+export function saveGame(game) {
   try {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    const data = {
+      version: 1,
+      money: game.player.money,
+      completed: game.missions.completed.slice(),
+      activeIndex: game.missions.activeIndex,
+      stepIndex: game.missions.stepIndex,
+      player: {
+        x: game.player.x,
+        y: game.player.y,
+        health: game.player.health,
+      },
+      savedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(CFG.saveKey, JSON.stringify(data));
     return true;
   } catch {
     return false;
@@ -27,33 +36,21 @@ function write(key, value) {
 }
 
 export function loadSave() {
-  const save = read(SAVE_KEY);
-  if (!save || typeof save.x !== 'number' || typeof save.missionIndex !== 'number') return null;
-  if (save.version !== 1 && save.version !== SAVE_VERSION) return null; // An unknown save is not trusted.
-  return {
-    x: save.x, y: save.y,
-    health: typeof save.health === 'number' ? save.health : 100,
-    money: typeof save.money === 'number' ? save.money : 250,
-    missionIndex: save.missionIndex,
-    missionsDone: typeof save.missionsDone === 'number' ? save.missionsDone : 0,
-    kills: typeof save.kills === 'number' ? save.kills : 0,
-    carsStolen: typeof save.carsStolen === 'number' ? save.carsStolen : 0,
-  };
-}
-
-export function storeSave(save) {
-  return write(SAVE_KEY, { ...save, version: SAVE_VERSION, savedAt: Date.now() });
+  try {
+    const raw = window.localStorage.getItem(CFG.saveKey);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.version !== 1) return null;
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export function clearSave() {
-  try { window.localStorage.removeItem(SAVE_KEY); } catch { /* storage off */ }
-}
-
-export function readBestMoney() {
-  const value = read(BEST_KEY);
-  return typeof value === 'number' ? value : 0;
-}
-
-export function storeBestMoney(money) {
-  if (money > readBestMoney()) write(BEST_KEY, money);
+  try {
+    window.localStorage.removeItem(CFG.saveKey);
+  } catch {
+    // Storage unavailable: nothing to clear.
+  }
 }
